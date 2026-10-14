@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Weekly, so a new a2a-laravel or Laravel release that breaks the starter shows up here first.
+    - cron: '0 6 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.3', '8.4', '8.5']
+    steps:
+      - uses: actions/checkout@v7
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo_sqlite
+          coverage: none
+      - uses: ramsey/composer-install@v4
+      - run: cp .env.example .env && php artisan key:generate
+      - run: php artisan test
+      - run: vendor/bin/pint --test app routes tests
+      - run: php artisan a2a:card > /dev/null
+
+  # The README's "Run it in 2 minutes", for real: a fresh setup, a running
+  # server, and an A2A call over HTTP.
+  readme-quickstart:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_sqlite
+          coverage: none
+      - uses: ramsey/composer-install@v4
+      - name: Set up like create-project does
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          touch database/database.sqlite
+          php artisan migrate --force
+      - name: Serve and call the agent
+        run: |
+          php artisan serve --port=8000 > serve.log 2>&1 &
+          for _ in $(seq 1 60); do curl -sf -o /dev/null http://127.0.0.1:8000/up && break; sleep 0.5; done
+          curl -sf http://127.0.0.1:8000/.well-known/agent-card.json | jq -e '.name == "Unit Converter"'
+          curl -sf http://127.0.0.1:8000/a2a/rest/message:send \
+            -H 'Content-Type: application/json' -H 'A2A-Version: 1.0' \
+            -d '{"message":{"messageId":"1","role":"ROLE_USER","parts":[{"text":"convert 10 km to miles"}]}}' \
+            | tee response.json | jq -e '.task.artifacts[0].parts[0].text == "10 km = 6.2137 mi"'
+      - if: failure()
+        run: cat serve.log response.json 2>/dev/null || true
