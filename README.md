@@ -2,6 +2,8 @@
 
 A Laravel app that is already an [A2A (Agent2Agent)](https://a2a-protocol.org/latest/specification/) agent. Clone it, run it, then swap the example agent for your own.
 
+![The starter's agent answering the A2A CLI: its Agent Card, a streamed conversion, and a multi-turn task that asks for the missing unit](art/demo.gif)
+
 It is built on [`praveendias1180/a2a-laravel`](https://github.com/praveendias1180/a2a-php), the Laravel bridge for the A2A PHP SDK. That SDK targets **A2A 1.0**, has the same shape as the official Python SDK, and passes the official A2A TCK.
 
 ## Run it in 2 minutes
