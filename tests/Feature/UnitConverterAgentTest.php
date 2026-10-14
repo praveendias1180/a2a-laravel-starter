@@ -24,6 +24,14 @@ class UnitConverterAgentTest extends TestCase
             ->assertJsonPath('skills.0.id', 'convert-units');
     }
 
+    public function test_the_home_page_command_can_be_copied_into_a_shell(): void
+    {
+        $tryIt = (string) $this->get('/')->assertOk()->json('try_it');
+
+        $this->assertStringEndsWith(" --stream 'convert 10 km to miles'", $tryIt);
+        $this->assertStringNotContainsString('\\"', (string) $this->get('/')->getContent());
+    }
+
     public function test_it_converts_over_json_rpc(): void
     {
         $this->rpc('SendMessage', ['message' => $this->message('convert 10 km to miles')])
